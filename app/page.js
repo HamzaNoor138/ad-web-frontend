@@ -1,85 +1,133 @@
-
 "use client";
-import { useState } from "react";
-import useQuiz from "../app/hooks/useQuiz";
-import styles from "../app/styles/styles";
+import { useRef, useState, useEffect } from "react";
+import { Suspense } from "react";
+import fetchData from "@/data/fetchData";
+import fetchCategories from "@/app/components/fetchCategories";
+import CategoryCarousel from "@/app/components/CategoryCarousel";
+import GroupedProductSections from "@/app/components/GroupedProductSections";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default function Home() {
-  const [quizStarted, setQuizStarted] = useState(false);
-  const {
-    quizData,
-    currentQuestion,
-    selectedAnswer,
-    score,
-    showResult,
-    timer,
-    handleAnswerClick,
-    handleNext,
-    handleRestart,
-  } = useQuiz();
+export default function HomePage() {
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [groupedProducts, setGroupedProducts] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const sectionRefs = useRef({});
 
-  const startQuiz = () => setQuizStarted(true);
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        // Fetch both products and categories
+        const [productsData, categoriesData] = await Promise.all([
+          fetchData(),
+          fetchCategories()
+        ]);
+        
+        // Group products by category
+        const grouped = productsData.reduce((acc, product) => {
+          if (product.category?.id) {
+            if (!acc[product.category.id]) {
+              acc[product.category.id] = [];
+            }
+            acc[product.category.id].push(product);
+          }
+          return acc;
+        }, {});
 
-  if (!quizStarted) {
+        setProducts(productsData);
+        setCategories(categoriesData);
+        setGroupedProducts(grouped);
+      } catch (err) {
+        console.error("Error loading data:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  const handleCategory = (catId) => {
+    if (sectionRefs.current[catId]) {
+      sectionRefs.current[catId].scrollIntoView({ 
+        behavior: "smooth", 
+        block: "start" 
+      });
+    }
+  };
+
+  if (error) {
     return (
-      <div style={styles.quizContainer}>
-        <button style={styles.startButton} onClick={startQuiz}>Start Quiz</button>
+      <div className="min-h-screen bg-red-700 py-10 px-4">
+        <div className="max-w-7xl mx-auto bg-white p-6 rounded-2xl shadow-md">
+          <div className="text-center py-10">
+            <h2 className="text-2xl font-bold text-red-600 mb-2">Error Loading Products</h2>
+            <p className="text-gray-600">{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
-  if (!quizData?.length) return <div style={styles.loading}>Loading quiz...</div>;
-
   return (
-    <div style={styles.quizContainer}>
-      {showResult ? (
-        <div style={styles.result}>
-          <h2>Quiz Completed!</h2>
-          <p>Score: {score} / {quizData.length}</p>
-          <button style={styles.restartButton} onClick={() => { setQuizStarted(false); handleRestart(); }}>Restart Quiz</button>
-        </div>
-      ) : (
-        <div style={styles.quizCard}>
+    <div className="min-h-screen bg-red-700 py-6 px-4 sm:px-6 md:px-8 lg:px-10">
+      <div className="w-full bg-white p-4 sm:p-5 md:p-6 lg:p-8 rounded-2xl shadow-md">
+        <Suspense fallback={<CategorySkeleton />}>
+          <CategoryCarousel
+            categories={categories}
+            selectedCat={null}
+            onSelect={handleCategory}
+          />
+        </Suspense>
 
-          <div style={styles.header}>
-            <span>{quizData[currentQuestion].question}</span>
-            <span>Score: {score} / {quizData.length}</span>
-            <span style={styles.timer}> {timer}s</span>
+        {loading ? (
+          <ProductsSkeleton />
+        ) : (
+          <Suspense fallback={<ProductsSkeleton />}>
+            <GroupedProductSections
+              categories={categories}
+              groupedProducts={groupedProducts}
+              sectionRefs={sectionRefs}
+            />
+          </Suspense>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CategorySkeleton() {
+  return (
+    <div className="flex gap-4 overflow-x-auto pb-4">
+      {[1, 2, 3, 4].map((i) => (
+        <Skeleton key={i} className="h-12 w-32 rounded-full" />
+      ))}
+    </div>
+  );
+}
+
+function ProductsSkeleton() {
+  return (
+    <div className="space-y-8 py-8">
+      {[1, 2].map((section) => (
+        <div key={section} className="space-y-4">
+          <Skeleton className="h-8 w-48" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((item) => (
+              <Skeleton key={item} className="h-[300px] rounded-xl" />
+            ))}
           </div>
-
-          {quizData[currentQuestion].image && (
-            <div style={styles.imageContainer}>
-              <img src={quizData[currentQuestion].image} alt="Question" style={styles.image} />
-            </div>
-          )}
-
-        
-          <div style={styles.options}>
-            {quizData[currentQuestion].options.map((option) => {
-              const isCorrect = option.id === quizData[currentQuestion].correctAnswer.id;
-              const isSelected = option.id === selectedAnswer;
-              return (
-                <button
-                  key={option.id}
-                  style={{
-                    ...styles.option,
-                    ...(isSelected ? styles.selected : {}),
-                    ...(selectedAnswer !== null && isCorrect ? styles.correct : {}),
-                    ...(selectedAnswer !== null && isSelected && !isCorrect ? styles.incorrect : {}),
-                  }}
-                  onClick={() => handleAnswerClick(option.id)}
-                  disabled={selectedAnswer !== null}
-                >
-                  {option.text}
-                </button>
-              );
-            })}
-          </div>
-          <button style={styles.nextButton} onClick={() => handleNext()}>
-            {currentQuestion < quizData.length - 1 ? "Next →" : "Show Result"}
-          </button>
         </div>
-      )}
+      ))}
     </div>
   );
 }
