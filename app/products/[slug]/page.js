@@ -71,15 +71,16 @@ export default async function ProductPage({ params }) {
 
         <div className="grid md:grid-cols-2 gap-8">
           {/* Product Image */}
-          <div className="relative h-[400px] rounded-2xl overflow-hidden bg-gray-100">
+          <div className="relative w-full aspect-[4/3] md:aspect-square rounded-lg overflow-hidden">
             {getProductImageUrl() ? (
               <Image
                 src={getProductImageUrl()}
                 alt={product.name}
                 fill
+                sizes="(max-width: 768px) 100vw, 800px"
                 className="object-cover"
-                sizes="(max-width: 768px) 100vw, 50vw"
                 priority
+                quality={85}
               />
             ) : (
               <div className="flex items-center justify-center h-full text-gray-400">

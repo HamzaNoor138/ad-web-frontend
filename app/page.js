@@ -6,6 +6,7 @@ import fetchCategories from "@/app/components/fetchCategories";
 import CategoryCarousel from "@/app/components/CategoryCarousel";
 import GroupedProductSections from "@/app/components/GroupedProductSections";
 import { Skeleton } from "@/components/ui/skeleton";
+import Image from "next/image";
 
 export default function HomePage() {
   const [products, setProducts] = useState([]);
@@ -25,6 +26,9 @@ export default function HomePage() {
           fetchCategories()
         ]);
         
+        console.log('Products Data:', productsData);
+        console.log('Categories Data:', categoriesData);
+        
         // Group products by category
         const grouped = productsData.reduce((acc, product) => {
           if (product.category?.id) {
@@ -35,6 +39,8 @@ export default function HomePage() {
           }
           return acc;
         }, {});
+
+        console.log('Grouped Products:', grouped);
 
         setProducts(productsData);
         setCategories(categoriesData);
@@ -78,9 +84,57 @@ export default function HomePage() {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center relative">
+        <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-0" />
+        <div className="flex flex-col items-center z-10">
+          <Image
+            src="/logo.webp"
+            alt="Logo"
+            width={110}
+            height={110}
+            className="mb-4 animate-pulse"
+            priority
+          />
+          <span className="text-red-700 text-lg font-semibold">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-red-700 py-6 px-4 sm:px-6 md:px-8 lg:px-10">
+      {/* Logo at the top */}
+      <div className="w-full flex justify-center mt-4 mb-2">
+        <button onClick={() => window.location.reload()} className="focus:outline-none">
+          <Image
+            src="/logo.webp"
+            alt="Logo"
+            width={120}
+            height={120}
+            className="rounded-full bg-white shadow-md hover:scale-105 transition-transform duration-200 w-[80px] h-[80px] sm:w-[100px] sm:h-[100px] md:w-[120px] md:h-[120px]"
+            priority
+          />
+        </button>
+      </div>
+      {/* Main white container */}
       <div className="w-full bg-white p-4 sm:p-5 md:p-6 lg:p-8 rounded-2xl shadow-md">
+        {/* Banner at the top of the inner container */}
+        <div className="w-full flex justify-center mb-6">
+          <div className="w-full max-w-[1400px] px-2">
+            <Image
+              src="/header.webp"
+              alt="Header Banner"
+              width={1400}
+              height={400}
+              className="rounded-3xl w-full h-[200px] sm:h-[250px] md:h-[300px] lg:h-[400px] object-cover"
+              priority
+              quality={100}
+            />
+          </div>
+        </div>
+        {/* Category row below banner */}
         <Suspense fallback={<CategorySkeleton />}>
           <CategoryCarousel
             categories={categories}
@@ -121,9 +175,9 @@ function ProductsSkeleton() {
       {[1, 2].map((section) => (
         <div key={section} className="space-y-4">
           <Skeleton className="h-8 w-48" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
             {[1, 2, 3, 4].map((item) => (
-              <Skeleton key={item} className="h-[300px] rounded-xl" />
+              <Skeleton key={item} className="h-[250px] sm:h-[280px] md:h-[300px] rounded-xl" />
             ))}
           </div>
         </div>

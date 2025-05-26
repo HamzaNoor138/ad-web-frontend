@@ -59,15 +59,16 @@ export default function ProductDetail({ product, isOpen, onClose }) {
 
           {/* Left Side - Image */}
           <div className="w-full md:w-1/2">
-            <div className="relative h-[300px] sm:h-[400px] md:h-[650px]">
+            <div className="relative w-full aspect-[4/3] md:aspect-square rounded-lg overflow-hidden">
               {getProductImageUrl() ? (
                 <Image
                   src={getProductImageUrl()}
                   alt={product.name}
                   fill
-                  className="object-contain p-4"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1100px) 50vw, 550px"
+                  sizes="(max-width: 768px) 100vw, 600px"
+                  className="object-cover"
                   priority
+                  quality={85}
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-gray-400">
