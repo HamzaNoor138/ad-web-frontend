@@ -25,11 +25,11 @@ export default function RootLayout({ children }) {
       <head>
         <link
           rel="preconnect"
-          href={process.env.NEXT_PUBLIC_API_URL || "http://localhost:1337"}
+          href={process.env.NEXT_PUBLIC_API_URL || "https://wise-book-dea9d4bff7.strapiapp.com"}
         />
         <link
           rel="dns-prefetch"
-          href={process.env.NEXT_PUBLIC_API_URL || "http://localhost:1337"}
+          href={process.env.NEXT_PUBLIC_API_URL || "https://wise-book-dea9d4bff7.strapiapp.com"}
         />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>

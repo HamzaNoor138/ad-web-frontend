@@ -1,25 +1,36 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, memo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import ProductDetail from "./ProductDetail";
 import Image from "next/image";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:1337";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://wise-book-dea9d4bff7.strapiapp.com";
 
-export default function FoodCard({ food, priority = false }) {
+const FoodCard = memo(function FoodCard({ food, priority = false }) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   // Get the appropriate image URL with proper fallbacks
-  let imgSrc = null;
-  if (food.image && Array.isArray(food.image) && food.image.length > 0) {
-    const imageData = food.image[0];
-    if (imageData.formats?.small?.url) {
-      imgSrc = `${API_URL}${imageData.formats.small.url}`;
-    } else if (imageData.url) {
-      imgSrc = `${API_URL}${imageData.url}`;
+  const imgSrc = useCallback(() => {
+    try {
+      if (food.image && Array.isArray(food.image) && food.image.length > 0) {
+        const imageData = food.image[0];
+        if (imageData.formats?.small?.url) {
+          return imageData.formats.small.url.startsWith('http') 
+            ? imageData.formats.small.url 
+            : `${API_URL}${imageData.formats.small.url}`;
+        } else if (imageData.url) {
+          return imageData.url.startsWith('http') 
+            ? imageData.url 
+            : `${API_URL}${imageData.url}`;
+        }
+      }
+    } catch (error) {
+      console.error('Error getting food image URL:', error);
     }
-  }
+    return null;
+  }, [food.image, API_URL]);
 
   // Format price with proper currency and separators
   const formattedPrice = new Intl.NumberFormat('en-PK', {
@@ -35,15 +46,18 @@ export default function FoodCard({ food, priority = false }) {
   }, []);
 
   // Handle image load error
-  const handleImageError = useCallback((e) => {
-    console.error('Image load error:', e);
-    setImgLoaded(true); // Show no-image state
-  }, []);
+  const handleImageError = useCallback(() => {
+    console.error('Image load error for:', food.name);
+    setImgError(true);
+    setImgLoaded(true);
+  }, [food.name]);
 
   // Handle card click
   const handleCardClick = useCallback(() => {
     setShowDetail(true);
   }, []);
+
+  const imageUrl = imgSrc();
 
   return (
     <>
@@ -63,15 +77,15 @@ export default function FoodCard({ food, priority = false }) {
         )}
 
         {/* Image Container */}
-        <div className="relative w-full aspect-square">
-          {imgSrc ? (
+        <div className="relative w-full aspect-square bg-gray-100">
+          {imageUrl && !imgError ? (
             <>
               {!imgLoaded && (
                 <div className="absolute inset-0 bg-gray-100 animate-pulse" />
               )}
               <Image
-                src={imgSrc}
-                alt={food.name}
+                src={imageUrl}
+                alt={food.name || 'Food item'}
                 fill
                 sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
                 className={`transition-opacity duration-300 object-cover ${
@@ -81,6 +95,7 @@ export default function FoodCard({ food, priority = false }) {
                 quality={85}
                 onLoad={handleImageLoad}
                 onError={handleImageError}
+                loading={priority ? 'eager' : 'lazy'}
               />
             </>
           ) : (
@@ -138,4 +153,8 @@ export default function FoodCard({ food, priority = false }) {
       />
     </>
   );
-}
+});
+
+FoodCard.displayName = 'FoodCard';
+
+export default FoodCard;

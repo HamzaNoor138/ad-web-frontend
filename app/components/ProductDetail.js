@@ -1,47 +1,70 @@
 "use client";
-import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
-import { useState } from "react";
+import { Dialog, DialogContent, DialogClose, DialogTitle } from "@/components/ui/dialog";
+import { useState, useCallback, memo } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:1337";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://wise-book-dea9d4bff7.strapiapp.com";
 
-export default function ProductDetail({ product, isOpen, onClose }) {
+const ProductDetail = memo(function ProductDetail({ product, isOpen, onClose }) {
   const [quantity, setQuantity] = useState(1);
   const [specialInstructions, setSpecialInstructions] = useState("");
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   if (!product) return null;
 
   // Get the appropriate image URL with proper fallbacks
-  const getProductImageUrl = () => {
-    if (product.image && Array.isArray(product.image) && product.image.length > 0) {
-      const imageData = product.image[0];
-      if (imageData.url) {
-        return `${API_URL}${imageData.url}`;
+  const getProductImageUrl = useCallback(() => {
+    try {
+      if (product.image && Array.isArray(product.image) && product.image.length > 0) {
+        const imageData = product.image[0];
+        if (imageData.url) {
+          return imageData.url.startsWith('http') 
+            ? imageData.url 
+            : `${API_URL}${imageData.url}`;
+        }
+        const formats = imageData.formats;
+        if (formats) {
+          if (formats.large?.url) return formats.large.url.startsWith('http') ? formats.large.url : `${API_URL}${formats.large.url}`;
+          if (formats.medium?.url) return formats.medium.url.startsWith('http') ? formats.medium.url : `${API_URL}${formats.medium.url}`;
+          if (formats.small?.url) return formats.small.url.startsWith('http') ? formats.small.url : `${API_URL}${formats.small.url}`;
+        }
       }
-      const formats = imageData.formats;
-      if (formats) {
-        if (formats.large?.url) return `${API_URL}${formats.large.url}`;
-        if (formats.medium?.url) return `${API_URL}${formats.medium.url}`;
-        if (formats.small?.url) return `${API_URL}${formats.small.url}`;
-      }
+    } catch (error) {
+      console.error('Error getting product image URL:', error);
     }
     return null;
-  };
+  }, [product.image, API_URL]);
 
   // Calculate total price
   const totalPrice = product.price * quantity;
 
-  const handleQuantityChange = (change) => {
-    const newQuantity = quantity + change;
-    if (newQuantity >= 1) {
-      setQuantity(newQuantity);
-    }
-  };
+  const handleQuantityChange = useCallback((change) => {
+    setQuantity(prev => {
+      const newQuantity = prev + change;
+      return newQuantity >= 1 ? newQuantity : prev;
+    });
+  }, []);
+
+  const handleImageLoad = useCallback(() => {
+    setImgLoaded(true);
+  }, []);
+
+  const handleImageError = useCallback(() => {
+    console.error('Image load error for:', product.name);
+    setImgError(true);
+    setImgLoaded(true);
+  }, [product.name]);
+
+  const imageUrl = getProductImageUrl();
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[95%] max-w-[1100px] p-0 rounded-lg overflow-hidden mx-auto">
+        <DialogTitle className="sr-only">
+          {product.name} - Product Details
+        </DialogTitle>
         <div className="flex flex-col md:flex-row bg-white relative min-h-[400px] md:min-h-0">
           {/* Close and Share Buttons */}
           <div className="absolute right-2 top-2 z-10 flex gap-2 md:right-4 md:top-4">
@@ -59,17 +82,27 @@ export default function ProductDetail({ product, isOpen, onClose }) {
 
           {/* Left Side - Image */}
           <div className="w-full md:w-1/2">
-            <div className="relative w-full aspect-[4/3] md:aspect-square rounded-lg overflow-hidden">
-              {getProductImageUrl() ? (
-                <Image
-                  src={getProductImageUrl()}
-                  alt={product.name}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 600px"
-                  className="object-cover"
-                  priority
-                  quality={85}
-                />
+            <div className="relative w-full aspect-[4/3] md:aspect-square rounded-lg overflow-hidden bg-gray-100">
+              {imageUrl && !imgError ? (
+                <>
+                  {!imgLoaded && (
+                    <div className="absolute inset-0 bg-gray-100 animate-pulse" />
+                  )}
+                  <Image
+                    src={imageUrl}
+                    alt={product.name || 'Product image'}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 600px"
+                    className={`transition-opacity duration-300 object-cover ${
+                      imgLoaded ? 'opacity-100' : 'opacity-0'
+                    }`}
+                    priority
+                    quality={85}
+                    onLoad={handleImageLoad}
+                    onError={handleImageError}
+                    loading="eager"
+                  />
+                </>
               ) : (
                 <div className="flex h-full items-center justify-center text-gray-400">
                   <span>No image available</span>
@@ -146,4 +179,8 @@ export default function ProductDetail({ product, isOpen, onClose }) {
       </DialogContent>
     </Dialog>
   );
-} 
+});
+
+ProductDetail.displayName = 'ProductDetail';
+
+export default ProductDetail; 
